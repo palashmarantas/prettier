@@ -3,9 +3,11 @@ framework: jest
 postMerge: 
   pattern: 
     - "./tests/integration/__tests__/*.js"
+    - "./tests/format/**/*.spec.js"
 preMerge:
   pattern:
     - "./tests/integration/__tests__/*.js"
+    - "./tests/format/**/*.spec.js"
 preRun:
      command:
         - yarn install
