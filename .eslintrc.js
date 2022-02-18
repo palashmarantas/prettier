@@ -9,16 +9,23 @@ module.exports = {
   },
   reportUnusedDisableDirectives: true,
   extends: ["eslint:recommended", "prettier"],
-  plugins: ["prettier-internal-rules", "import", "regexp", "unicorn"],
+  plugins: [
+    "prettier-internal-rules",
+    "import",
+    "regexp",
+    "unicorn",
+    "@typescript-eslint",
+  ],
   settings: {
     "import/internal-regex": "^linguist-languages/",
   },
   rules: {
+    "@typescript-eslint/prefer-ts-expect-error": "error",
     "arrow-body-style": ["error", "as-needed"],
     curly: "error",
     "dot-notation": "error",
     eqeqeq: "error",
-    "no-console": isCI ? "error" : "off",
+    "no-console": isCI ? "error" : "warn",
     "no-else-return": [
       "error",
       {
@@ -31,6 +38,9 @@ module.exports = {
       "error",
       // `!foo === bar` and `!foo !== bar`
       'BinaryExpression[operator=/^[!=]==$/] > UnaryExpression.left[operator="!"]',
+      // `(() => (foo ? bar : baz))()`
+      // TODO: Remove this when https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1730 get implemented
+      'CallExpression[callee.type="ArrowFunctionExpression"][callee.body.type="ConditionalExpression"]',
     ],
     "no-return-await": "error",
     "no-unneeded-ternary": "error",
@@ -117,11 +127,13 @@ module.exports = {
 
     "unicorn/better-regex": "error",
     "unicorn/explicit-length-check": "error",
+    "unicorn/filename-case": "error",
     "unicorn/new-for-builtins": "error",
     "unicorn/no-array-for-each": "error",
     "unicorn/no-array-push-push": "error",
     "unicorn/no-new-array": "error",
     "unicorn/no-useless-length-check": "error",
+    "unicorn/no-useless-promise-resolve-reject": "error",
     "unicorn/no-useless-undefined": "error",
     "unicorn/prefer-array-flat": [
       "error",
@@ -132,6 +144,7 @@ module.exports = {
     "unicorn/prefer-array-flat-map": "error",
     "unicorn/prefer-array-some": "error",
     "unicorn/prefer-includes": "error",
+    "unicorn/prefer-json-parse-buffer": "error",
     "unicorn/prefer-number-properties": "error",
     "unicorn/prefer-optional-catch-binding": "error",
     "unicorn/prefer-regexp-test": "error",
@@ -143,7 +156,11 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["scripts/**/*.js", "scripts/**/*.mjs"],
+      files: [
+        "scripts/**/*.js",
+        "scripts/**/*.mjs",
+        "tests/config/install-prettier.js",
+      ],
       rules: {
         "no-console": "off",
       },
@@ -177,6 +194,12 @@ module.exports = {
           },
         ],
         "jest/prefer-to-be": "error",
+      },
+    },
+    {
+      files: ["tests/integration/**/*.js"],
+      rules: {
+        "prettier-internal-rules/await-cli-tests": "error",
       },
     },
     {
@@ -245,7 +268,7 @@ module.exports = {
         "prettier-internal-rules/no-node-comments": [
           "error",
           {
-            file: "src/language-js/utils.js",
+            file: "src/language-js/utils/index.js",
             functions: ["hasComment", "getComments"],
           },
           "src/language-js/pragma.js",
@@ -253,6 +276,7 @@ module.exports = {
           "src/language-js/parse/babel.js",
           "src/language-js/parse/meriyah.js",
           "src/language-js/parse/json.js",
+          "src/language-js/parse/acorn.js",
         ],
       },
     },
@@ -273,6 +297,7 @@ module.exports = {
         "react/display-name": "off",
         "react/no-deprecated": "off",
         "react/prop-types": "off",
+        "unicorn/filename-case": "off",
       },
     },
     {

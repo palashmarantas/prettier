@@ -1,7 +1,7 @@
 "use strict";
 
 const createError = require("../../../common/parser-create-error.js");
-const visitNode = require("./visitNode.js");
+const visitNode = require("./visit-node.js");
 
 function throwSyntaxError(node, message) {
   const { start, end } = node.loc;
@@ -63,7 +63,8 @@ function throwErrorForInvalidAbstractProperty(tsNode, esTreeNode) {
 function throwErrorForInvalidNodes(ast, options) {
   const { esTreeNodeToTSNodeMap, tsNodeToESTreeNodeMap } =
     options.tsParseResult;
-  ast = visitNode(ast, (node) => {
+
+  visitNode(ast, (node) => {
     const tsNode = esTreeNodeToTSNodeMap.get(node);
     if (!tsNode) {
       return;

@@ -20,7 +20,6 @@ const {
   hasComment,
   CommentCheckFlags,
   isTheOnlyJsxElementInMarkdown,
-  isBlockComment,
   isLineComment,
   isNextLineEmpty,
   needsHardlineAfterDanglingComment,
@@ -28,8 +27,10 @@ const {
   hasIgnoreComment,
   isCallExpression,
   isMemberExpression,
-} = require("./utils.js");
+  markerForIfWithoutBlockAndSameLineComment,
+} = require("./utils/index.js");
 const { locStart, locEnd } = require("./loc.js");
+const isBlockComment = require("./utils/is-block-comment.js");
 
 const {
   printHtmlBinding,
@@ -105,24 +106,53 @@ function genericPrint(path, options, print, args) {
     return printed;
   }
 
+  let parts = [printed];
+
   const printedDecorators = printDecorators(path, options, print);
-  // Nodes with decorators can't have parentheses and don't need leading semicolons
+  const isClassExpressionWithDecorators =
+    node.type === "ClassExpression" && printedDecorators;
+  // Nodes (except `ClassExpression`) with decorators can't have parentheses and don't need leading semicolons
   if (printedDecorators) {
-    return group([...printedDecorators, printed]);
+    parts = [...printedDecorators, printed];
+
+    if (!isClassExpressionWithDecorators) {
+      return group(parts);
+    }
   }
 
   const needsParens = pathNeedsParens(path, options);
 
   if (!needsParens) {
-    return args && args.needsSemi ? [";", printed] : printed;
+    if (args && args.needsSemi) {
+      parts.unshift(";");
+    }
+
+    // In member-chain print, it add `label` to the doc, if we return array here it will be broken
+    if (parts.length === 1 && parts[0] === printed) {
+      return printed;
+    }
+
+    return parts;
   }
 
-  const parts = [args && args.needsSemi ? ";(" : "(", printed];
+  if (isClassExpressionWithDecorators) {
+    parts = [indent([line, ...parts])];
+  }
+
+  parts.unshift("(");
+
+  if (args && args.needsSemi) {
+    parts.unshift(";");
+  }
 
   if (hasFlowShorthandAnnotationComment(node)) {
     const [comment] = node.trailingComments;
     parts.push(" /*", comment.value.trimStart(), "*/");
     comment.printed = true;
+  }
+
+  if (isClassExpressionWithDecorators) {
+    parts.push(line);
   }
 
   parts.push(")");
@@ -180,7 +210,7 @@ function printPathNoParens(path, options, print, args) {
     // Babel extension.
     case "EmptyStatement":
       return "";
-    case "ExpressionStatement":
+    case "ExpressionStatement": {
       // Detect Flow and TypeScript directives
       if (node.directive) {
         return [printDirective(node.expression, options), semi];
@@ -200,11 +230,20 @@ function printPathNoParens(path, options, print, args) {
         }
       }
 
+      const danglingComment = printDanglingComments(
+        path,
+        options,
+        /** sameIndent */ true,
+        ({ marker }) => marker === markerForIfWithoutBlockAndSameLineComment
+      );
+
       // Do not append semicolon after the only JSX element in a program
       return [
         print("expression"),
         isTheOnlyJsxElementInMarkdown(options, path) ? "" : semi,
+        danglingComment ? [" ", danglingComment] : "",
       ];
+    }
     // Babel non-standard node. Used for Closure-style type casts. See postprocess.js.
     case "ParenthesizedExpression": {
       const shouldHug =
@@ -684,6 +723,10 @@ function printPathNoParens(path, options, print, args) {
         parts.push("case ", print("test"), ":");
       } else {
         parts.push("default:");
+      }
+
+      if (hasComment(node, CommentCheckFlags.Dangling)) {
+        parts.push(" ", printDanglingComments(path, options, true));
       }
 
       const consequent = node.consequent.filter(
