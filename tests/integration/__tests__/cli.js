@@ -7,3 +7,5 @@ describe("CLI", () => {
     expect(() => fs.accessSync(prettierCli, fs.constants.X_OK)).not.toThrow();
   });
 });
+
+
